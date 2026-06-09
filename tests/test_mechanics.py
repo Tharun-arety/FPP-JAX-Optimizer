@@ -65,3 +65,28 @@ def test_boss_region_response_changes_with_patch_angle() -> None:
     circumferential_fi = np.asarray(circumferential_response["stress_index"])[support_region]
 
     assert float(np.mean(meridional_fi)) < float(np.mean(circumferential_fi))
+
+
+def test_reported_peak_stress_is_not_the_weighted_surrogate_field() -> None:
+    dome = build_type_iv_dome(DomeConfig(theta_points=24, phi_points=36))
+    material = MaterialConfig()
+    config = OptimizationConfig(patch_count=1)
+    layout = {
+        "center_theta": jnp.asarray([dome.config.theta_open + 0.08], dtype=jnp.float32),
+        "center_phi": jnp.asarray([0.0], dtype=jnp.float32),
+        "length_m": jnp.asarray([0.10], dtype=jnp.float32),
+        "width_m": jnp.asarray([0.10], dtype=jnp.float32),
+        "angle_rad": jnp.asarray([0.0], dtype=jnp.float32),
+        "plies": jnp.asarray([0.75], dtype=jnp.float32),
+        "transition_theta": jnp.asarray(dome.config.theta_open + 0.28, dtype=jnp.float32),
+    }
+
+    thickness = evaluate_thickness_state(dome, layout, material, config)
+    response = evaluate_structural_response(dome, layout, thickness, material)
+
+    support_region = np.asarray(thickness["patch_effective_plies"][0]) >= material.report_min_patch_plies
+    reported = np.asarray(response["stress_index"])
+    surrogate = np.asarray(response["surrogate_stress_index"])
+
+    assert bool(support_region.any())
+    assert float(np.max(reported[support_region])) > float(np.max(surrogate[support_region]))

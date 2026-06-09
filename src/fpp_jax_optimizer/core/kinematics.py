@@ -18,7 +18,9 @@ def evaluate_kinematics(
     config = config or OptimizationConfig()
 
     masks, local = patch_masks_from_layout(dome, layout, config)
-    active_weight = 1.0 - jnp.exp(-(masks * layout["plies"][:, None, None]))
+    effective_patch_plies = masks * layout["plies"][:, None, None]
+    active_weight = jnp.clip(effective_patch_plies / material.support_full_weight_plies, 0.0, 1.0)
+    report_mask = effective_patch_plies >= material.report_min_patch_plies
     angle = layout["angle_rad"][:, None, None]
     center_theta = layout["center_theta"][:, None, None]
     center_phi = layout["center_phi"][:, None, None]
@@ -65,10 +67,13 @@ def evaluate_kinematics(
     combined_shear_map = jnp.sum(active_weight * shear_strain, axis=0) / weighted_denominator
     combined_areal_map = jnp.sum(active_weight * areal_distortion, axis=0) / weighted_denominator
     combined_wrinkle_map = jnp.maximum(combined_shear_map, combined_areal_map)
+    reported_shear = jnp.where(report_mask, shear_strain, 0.0)
+    reported_areal = jnp.where(report_mask, areal_distortion, 0.0)
 
     return {
         "masks": masks,
         "active_weight": active_weight,
+        "report_mask": report_mask,
         "u_local_m": local["u_local_m"],
         "v_local_m": local["v_local_m"],
         "shear_per_patch": shear_strain,
@@ -80,6 +85,6 @@ def evaluate_kinematics(
         "wrinkle_risk_map": combined_wrinkle_map,
         "penalty": penalty,
         "peak_violation": peak_violation,
-        "max_shear": jnp.max(active_weight * shear_strain),
-        "max_areal_distortion": jnp.max(active_weight * areal_distortion),
+        "max_shear": jnp.max(reported_shear),
+        "max_areal_distortion": jnp.max(reported_areal),
     }

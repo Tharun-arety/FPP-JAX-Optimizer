@@ -14,13 +14,20 @@ def summarize_result(result: dict[str, Any]) -> dict[str, Any]:
     baseline = result["baseline"]
     metrics = optimized["metrics"]
     baseline_metrics = baseline["metrics"]
+    baseline_mass = float(baseline_metrics["total_mass_kg"])
+    optimized_mass = float(metrics["total_mass_kg"])
+    baseline_helical_mass = float(baseline_metrics["helical_mass_kg"])
+    optimized_helical_mass = float(metrics["helical_mass_kg"])
     return {
         "baseline_peak_stress_index": float(baseline_metrics["peak_stress_index"]),
         "optimized_peak_stress_index": float(metrics["peak_stress_index"]),
-        "baseline_mass_kg": float(baseline_metrics["total_mass_kg"]),
-        "optimized_mass_kg": float(metrics["total_mass_kg"]),
+        "baseline_mass_kg": baseline_mass,
+        "optimized_mass_kg": optimized_mass,
+        "added_total_mass_kg": optimized_mass - baseline_mass,
         "patch_mass_kg": float(metrics["patch_mass_kg"]),
-        "helical_mass_kg": float(metrics["helical_mass_kg"]),
+        "baseline_helical_mass_kg": baseline_helical_mass,
+        "helical_mass_kg": optimized_helical_mass,
+        "added_helical_mass_kg": optimized_helical_mass - baseline_helical_mass,
         "cost_savings_vs_all_fpp_pct": float(metrics["cost_savings_vs_all_fpp_pct"]),
         "max_shear": float(metrics["max_shear"]),
         "max_areal_distortion": float(metrics["max_areal_distortion"]),

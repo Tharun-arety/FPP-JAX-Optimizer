@@ -126,7 +126,7 @@ def tsai_wu_field(
     layout: dict[str, jnp.ndarray],
     thickness_state: dict[str, jnp.ndarray],
     material: MaterialConfig,
-) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     Xt = material.Xt_mpa * 1.0e6
     Xc = material.Xc_mpa * 1.0e6
     Yt = material.Yt_mpa * 1.0e6
@@ -165,26 +165,39 @@ def tsai_wu_field(
             + 2.0 * F12 * s1 * s2
         )
 
-    patch_presence = 1.0 - jnp.exp(-(thickness_state["masks"] * layout["plies"][:, None, None]))
-    fi_patches = patch_presence * jax.vmap(ply_tsai_wu)(layout["angle_rad"])
+    patch_effective_plies = thickness_state["patch_effective_plies"]
+    patch_support = jnp.clip(patch_effective_plies / material.support_full_weight_plies, 0.0, 1.0)
+    raw_fi_patches = jax.vmap(ply_tsai_wu)(layout["angle_rad"])
+    fi_patches_loss = patch_support * raw_fi_patches
 
     alpha = jnp.asarray(math.radians(material.helical_reference_angle_deg))
-    helical_presence = 1.0 - jnp.exp(-0.5 * thickness_state["baseline_plies_map"])
-    fi_helical_pos = helical_presence * ply_tsai_wu(alpha)
-    fi_helical_neg = helical_presence * ply_tsai_wu(-alpha)
+    raw_fi_helical_pos = ply_tsai_wu(alpha)
+    raw_fi_helical_neg = ply_tsai_wu(-alpha)
+    helical_support = jnp.clip(thickness_state["baseline_plies_map"] / material.support_full_weight_plies, 0.0, 1.0)
+    fi_helical_pos_loss = helical_support * raw_fi_helical_pos
+    fi_helical_neg_loss = helical_support * raw_fi_helical_neg
 
-    fi_max = jnp.max(
+    fi_loss = jnp.max(
         jnp.concatenate(
             [
-                fi_patches,
-                fi_helical_pos[None, ...],
-                fi_helical_neg[None, ...],
+                fi_patches_loss,
+                fi_helical_pos_loss[None, ...],
+                fi_helical_neg_loss[None, ...],
             ],
             axis=0,
         ),
         axis=0,
     )
-    return fi_max, eps, preferred_angle
+    fi_loss = jnp.maximum(fi_loss, 0.0)
+
+    patch_report = jnp.where(patch_effective_plies >= material.report_min_patch_plies, raw_fi_patches, 0.0)
+    helical_report = jnp.maximum(
+        jnp.where(thickness_state["baseline_plies_map"] >= material.report_min_helical_plies, raw_fi_helical_pos, 0.0),
+        jnp.where(thickness_state["baseline_plies_map"] >= material.report_min_helical_plies, raw_fi_helical_neg, 0.0),
+    )
+    fi_report = jnp.maximum(jnp.max(patch_report, axis=0), helical_report)
+    fi_report = jnp.maximum(fi_report, 0.0)
+    return fi_loss, fi_report, eps, preferred_angle
 
 
 def evaluate_structural_response(
@@ -197,7 +210,7 @@ def evaluate_structural_response(
     N_phi, N_theta = membrane_stress_resultants(dome, material)
     Q = ply_Q_matrix(material)
     A_field = assemble_a_matrix_field(layout, thickness_state, Q, material)
-    stress_index, eps, preferred_angle = tsai_wu_field(
+    surrogate_stress_index, stress_index, eps, preferred_angle = tsai_wu_field(
         A_field,
         N_phi,
         N_theta,
@@ -208,8 +221,8 @@ def evaluate_structural_response(
     )
     patch_angles = patch_angle_field(layout, thickness_state)
 
-    mean_loss = jnp.sum(dome.area_weights * stress_index**2) / jnp.maximum(dome.total_area_m2, 1.0e-8)
-    peak_loss = 0.35 * jnp.max(stress_index) ** 2
+    mean_loss = jnp.sum(dome.area_weights * surrogate_stress_index**2) / jnp.maximum(dome.total_area_m2, 1.0e-8)
+    peak_loss = 0.35 * jnp.max(surrogate_stress_index) ** 2
     structural_loss = mean_loss + peak_loss
 
     transition_height_m = dome.config.minor_radius_m * jnp.cos(layout["transition_theta"])
@@ -218,6 +231,7 @@ def evaluate_structural_response(
         "patch_angle_field": patch_angles,
         "effective_total_plies": thickness_state["total_plies"],
         "stress_index": stress_index,
+        "surrogate_stress_index": surrogate_stress_index,
         "structural_loss": structural_loss,
         "peak_stress_index": jnp.max(stress_index),
         "mean_stress_index": jnp.sum(dome.area_weights * stress_index) / jnp.maximum(dome.total_area_m2, 1.0e-8),

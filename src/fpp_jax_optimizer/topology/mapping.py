@@ -134,7 +134,8 @@ def evaluate_thickness_state(
     transition_theta = layout["transition_theta"]
     helical_mask = jax.nn.sigmoid((dome.theta_grid - transition_theta) / config.transition_smooth_theta)
     baseline_plies_map = material.baseline_helical_plies * helical_mask
-    patch_plies_map = jnp.sum(masks * layout["plies"][:, None, None], axis=0)
+    patch_effective_plies = masks * layout["plies"][:, None, None]
+    patch_plies_map = jnp.sum(patch_effective_plies, axis=0)
     total_plies = baseline_plies_map + patch_plies_map
     thickness_mm = material.liner_thickness_mm + material.ply_thickness_mm * total_plies
 
@@ -160,6 +161,7 @@ def evaluate_thickness_state(
         "u_local_m": local["u_local_m"],
         "v_local_m": local["v_local_m"],
         "baseline_plies_map": baseline_plies_map,
+        "patch_effective_plies": patch_effective_plies,
         "patch_plies_map": patch_plies_map,
         "total_plies": total_plies,
         "thickness_mm": thickness_mm,

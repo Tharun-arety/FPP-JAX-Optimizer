@@ -33,6 +33,9 @@ class MaterialConfig:
     allowable_shear_strain: float = 0.015
     allowable_distortion: float = 0.015
     max_thickness_gradient_mm_per_m: float = 8.0
+    support_full_weight_plies: float = 1.0
+    report_min_patch_plies: float = 0.5
+    report_min_helical_plies: float = 1.0
     helical_reference_angle_deg: float = 55.0
     helical_cost_per_kg: float = 110.0
     fpp_cost_per_kg: float = 185.0
@@ -49,22 +52,22 @@ class MaterialConfig:
 
 @dataclass(frozen=True)
 class OptimizationConfig:
-    patch_count: int = 4
-    steps: int = 90
+    patch_count: int = 6
+    steps: int = 180
     learning_rate: float = 0.03
     grad_clip_norm: float = 1.0
     patch_length_bounds_m: tuple[float, float] = (0.05, 0.18)
     patch_width_bounds_m: tuple[float, float] = (0.04, 0.12)
-    max_patch_plies: float = 6.0
+    max_patch_plies: float = 8.0
     mask_sharpness: float = 35.0
     transition_smooth_theta: float = 0.12
     boss_margin_theta: float = 0.05
     theta_upper_margin: float = 0.10
-    stress_weight: float = 15.0
-    shear_weight: float = 30.0
+    stress_weight: float = 25.0
+    shear_weight: float = 20.0
     thickness_weight: float = 18.0
-    mass_weight: float = 0.05
-    history_stride: int = 5
+    mass_weight: float = 0.02
+    history_stride: int = 6
 
 
 @dataclass(frozen=True)

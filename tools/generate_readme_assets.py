@@ -70,11 +70,13 @@ def _metric_rows(summary: dict[str, float]) -> list[str]:
     baseline_mass = summary["baseline_mass_kg"]
     optimized_mass = summary["optimized_mass_kg"]
     patch_mass_g = 1000.0 * summary["patch_mass_kg"]
+    added_helical_mass_g = 1000.0 * summary["added_helical_mass_kg"]
 
     result = [
         f"Peak Tsai-Wu index: {baseline_peak:.3f} -> {optimized_peak:.3f} ({_percent_change(baseline_peak, optimized_peak):+.1f}%)",
         f"Total mass: {baseline_mass:.4f} kg -> {optimized_mass:.4f} kg ({_percent_change(baseline_mass, optimized_mass):+.1f}%)",
         f"Patch reinforcement added: {patch_mass_g:.1f} g",
+        f"Helical mass shift: {added_helical_mass_g:+.1f} g",
         f"Cost saving vs all-FPP laminate: {summary['cost_savings_vs_all_fpp_pct']:.1f}%",
         f"Transition height: {1000.0 * summary['transition_height_m']:.1f} mm",
     ]
@@ -402,6 +404,8 @@ def _draw_patch_movement_map(
         "Outcome",
         f"Peak Tsai-Wu  {summary['baseline_peak_stress_index']:.2f} -> {summary['optimized_peak_stress_index']:.2f}",
         f"Mass          {summary['baseline_mass_kg']:.3f} kg -> {summary['optimized_mass_kg']:.3f} kg",
+        f"Helical +     {1000.0 * summary['added_helical_mass_kg']:.1f} g",
+        f"Patch +       {1000.0 * summary['patch_mass_kg']:.1f} g",
         f"Transition    {1000.0 * summary['transition_height_m']:.1f} mm",
     ]
 

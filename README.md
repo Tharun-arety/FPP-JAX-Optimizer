@@ -29,29 +29,33 @@ The current structural path is no longer the old heuristic stress proxy. The wor
 5. Compute analytical membrane stress resultants for the pressurized dome.
 6. Assemble the laminate `A`-matrix from the helical baseline plies and the optimizer-controlled patches.
 7. Solve for midplane strains and evaluate a Tsai-Wu failure field.
-8. Combine structural, kinematic, thickness, and mass terms into one loss and optimize it with Adam.
-9. Record layout snapshots through the run and export them as a convergence GIF and static figures.
+8. Use smooth support weights in the loss so sub-ply patch tails and helical taper regions remain differentiable during optimization.
+9. Report Tsai-Wu and kinematic peaks only on supported laminate regions (`>= 0.5` effective patch plies, `>= 1.0` helical plies), so README/export metrics are not suppressed by the smooth surrogate.
+10. Combine structural, kinematic, thickness, and mass terms into one loss and optimize it with Adam, then record layout snapshots through the run.
 
 ## Default Demonstration Run
 
-These numbers come from the current default 90-step asset-generation run.
+These numbers come from the current default asset-generation run (`6` patches, `180` Adam steps).
 
 | Metric | Helical-only baseline | Optimized hybrid demo |
 | --- | ---: | ---: |
-| Peak Tsai-Wu index | 1.415 | 0.934 |
-| Total mass (kg) | 0.1084 | 0.1519 |
-| Patch mass added (kg) | 0.0000 | 0.0035 |
-| Cost saving vs all-FPP laminate | - | 39.6% |
-| Transition height (mm) | 109.0 | 145.7 |
-| Max shear strain in active patches | 0.0000 | 0.0554 |
-| Max areal distortion in active patches | 0.0000 | 0.0764 |
-| Max thickness gradient (mm/m) | 4.91 | 5.27 |
+| Peak Tsai-Wu index | 3.272 | 0.894 |
+| Total mass (kg) | 0.1084 | 0.1612 |
+| Added helical mass (kg) | 0.0000 | 0.0470 |
+| Patch mass added (kg) | 0.0000 | 0.0058 |
+| Cost saving vs all-FPP laminate | - | 39.1% |
+| Transition height (mm) | 109.0 | 151.8 |
+| Max shear strain in supported patch footprint | 0.0000 | 0.0295 |
+| Max areal distortion in supported patch footprint | 0.0000 | 0.0948 |
+| Max thickness gradient (mm/m) | 4.91 | 4.34 |
 
-`Tsai-Wu < 1` means the laminate is predicted to stay below ply failure under the analytical membrane solution. In the default demo, the helical-only baseline is slightly above that limit near the boss, and the optimized hybrid layout pushes the peak below 1.
+`Tsai-Wu < 1` means the laminate is predicted to stay below ply failure under the analytical membrane solution. The values in the table above are now reported on supported laminate regions only, instead of being damped by the smooth optimization surrogate.
 
-The current default README run is intentionally a low-pressure demo configuration (`pressure_mpa = 0.5`, `baseline_helical_plies = 4`, `transition_smooth_theta = 0.12`) so the failure-index values stay interpretable on a compact prototype laminate. For realistic 70 MPa studies, increase the baseline laminate thickness and retune the transition model accordingly.
+The current default README run is intentionally a low-pressure demo configuration (`pressure_mpa = 0.5`, `baseline_helical_plies = 4`, `transition_smooth_theta = 0.12`) so the failure-index values stay interpretable on a compact prototype laminate. For realistic 70 MPa studies, increase the baseline laminate thickness and retune both the transition model and the loss weights accordingly.
 
-The run is now mechanically interpretable, but it is still not a release-ready design workflow: the active patches remain above the nominal shear and areal-distortion allowables, so the repository should still be read as a research prototype rather than a finished manufacturing pipeline.
+The default demo is also now explicit about what is doing the work: most of the added mass still comes from moving the helical/FPP transition toward the boss (`+47.0 g` helical versus `+5.8 g` patch mass). This is a coupled transition-and-patch optimization, not a patch-only ablation.
+
+The run is mechanically honest now, but it is still not a release-ready design workflow: the supported patch footprints remain above the nominal areal-distortion allowable, so the repository should still be read as a research prototype rather than a finished manufacturing pipeline.
 
 ## Visual Outputs
 
