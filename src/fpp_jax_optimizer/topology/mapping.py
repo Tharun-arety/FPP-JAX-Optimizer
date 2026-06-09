@@ -35,11 +35,17 @@ def initial_raw_layout(dome: DomeState, config: OptimizationConfig | None = None
     length_low, length_high = config.patch_length_bounds_m
     width_low, width_high = config.patch_width_bounds_m
 
-    centers_theta = np.full(config.patch_count, theta_low + 0.16, dtype=np.float32)
+    seed_theta_low = min(theta_high, theta_low + 0.02)
+    seed_theta_high = min(theta_high - 0.02, theta_low + 0.35)
+    if seed_theta_high < seed_theta_low:
+        seed_theta_high = seed_theta_low
+
+    # Break the axisymmetric seed so patches can discover different meridional roles.
+    centers_theta = np.linspace(seed_theta_low, seed_theta_high, config.patch_count, dtype=np.float32)
     centers_phi = 2.0 * np.pi * (np.arange(config.patch_count, dtype=np.float32) + 0.5) / config.patch_count
     lengths = np.full(config.patch_count, 0.11, dtype=np.float32)
     widths = np.full(config.patch_count, 0.075, dtype=np.float32)
-    angles = np.full(config.patch_count, np.deg2rad(72.0), dtype=np.float32)
+    angles = np.deg2rad(np.linspace(15.0, 50.0, config.patch_count, dtype=np.float32))
     plies = np.full(config.patch_count, 2.0, dtype=np.float32)
     transition_theta = theta_low + 0.55 * (theta_high - theta_low)
 

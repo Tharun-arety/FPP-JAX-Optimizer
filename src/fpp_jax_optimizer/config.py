@@ -36,6 +36,15 @@ class MaterialConfig:
     helical_reference_angle_deg: float = 55.0
     helical_cost_per_kg: float = 110.0
     fpp_cost_per_kg: float = 185.0
+    E1_gpa: float = 140.0
+    E2_gpa: float = 10.0
+    G12_gpa: float = 5.0
+    nu12: float = 0.30
+    Xt_mpa: float = 2200.0
+    Xc_mpa: float = 1500.0
+    Yt_mpa: float = 60.0
+    Yc_mpa: float = 150.0
+    S_mpa: float = 90.0
 
 
 @dataclass(frozen=True)
@@ -51,7 +60,7 @@ class OptimizationConfig:
     transition_smooth_theta: float = 0.06
     boss_margin_theta: float = 0.05
     theta_upper_margin: float = 0.10
-    stress_weight: float = 1.0
+    stress_weight: float = 5.0
     shear_weight: float = 40.0
     thickness_weight: float = 18.0
     mass_weight: float = 0.08

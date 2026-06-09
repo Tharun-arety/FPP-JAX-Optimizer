@@ -14,6 +14,25 @@ from ..model.fem import evaluate_structural_response
 from ..topology.mapping import decode_layout, evaluate_thickness_state, initial_raw_layout
 
 
+FRAME_METRIC_KEYS = (
+    "loss",
+    "structural_loss",
+    "kinematic_penalty",
+    "thickness_penalty",
+    "mass_term",
+    "peak_stress_index",
+    "mean_stress_index",
+    "max_shear",
+    "max_areal_distortion",
+    "max_thickness_gradient_mm_per_m",
+    "total_mass_kg",
+    "patch_mass_kg",
+    "helical_mass_kg",
+    "cost_savings_vs_all_fpp_pct",
+    "transition_height_m",
+)
+
+
 def _scalarize(aux: dict[str, object], path: str) -> float:
     value = aux
     for part in path.split("."):
@@ -29,6 +48,29 @@ def _serialize_layout(layout: dict[str, jnp.ndarray]) -> dict[str, object]:
         else:
             serialized[key] = value
     return serialized
+
+
+def _history_entry(aux: dict[str, object], step: int) -> dict[str, float]:
+    return {
+        "step": float(step),
+        "loss": _scalarize(aux, "metrics.loss"),
+        "structural_loss": _scalarize(aux, "metrics.structural_loss"),
+        "kinematic_penalty": _scalarize(aux, "metrics.kinematic_penalty"),
+        "thickness_penalty": _scalarize(aux, "metrics.thickness_penalty"),
+        "total_mass_kg": _scalarize(aux, "metrics.total_mass_kg"),
+        "peak_stress_index": _scalarize(aux, "metrics.peak_stress_index"),
+        "max_shear": _scalarize(aux, "metrics.max_shear"),
+    }
+
+
+def _frame_entry(aux: dict[str, object], step: int) -> dict[str, object]:
+    metrics = aux["metrics"]
+    serialized_metrics = {key: float(metrics[key]) for key in FRAME_METRIC_KEYS}
+    return {
+        "step": float(step),
+        "layout": _serialize_layout(aux["layout"]),
+        "metrics": serialized_metrics,
+    }
 
 
 def evaluate_layout(
@@ -121,8 +163,13 @@ def optimize_patch_layout(
     )
     opt_state = optimizer.init(raw_params)
     best_params = raw_params
-    best_loss = jnp.inf
+    initial = evaluate_layout(raw_params, dome, material, config)
+    best_loss = initial["loss"]
     history: list[dict[str, float]] = []
+    frames: list[dict[str, object]] = []
+
+    history.append(_history_entry(initial, 0))
+    frames.append(_frame_entry(initial, 0))
 
     def loss_fn(params: jnp.ndarray) -> tuple[jnp.ndarray, dict[str, object]]:
         aux = evaluate_layout(params, dome, material, config)
@@ -140,19 +187,13 @@ def optimize_patch_layout(
             best_loss = loss_value
             best_params = current_params
 
-        if step % config.history_stride == 0 or step == config.steps - 1:
-            history.append(
-                {
-                    "step": float(step),
-                    "loss": _scalarize(aux, "metrics.loss"),
-                    "structural_loss": _scalarize(aux, "metrics.structural_loss"),
-                    "kinematic_penalty": _scalarize(aux, "metrics.kinematic_penalty"),
-                    "thickness_penalty": _scalarize(aux, "metrics.thickness_penalty"),
-                    "total_mass_kg": _scalarize(aux, "metrics.total_mass_kg"),
-                    "peak_stress_index": _scalarize(aux, "metrics.peak_stress_index"),
-                    "max_shear": _scalarize(aux, "metrics.max_shear"),
-                }
-            )
+        if (step + 1) % config.history_stride == 0 or step == config.steps - 1:
+            frame_aux = evaluate_layout(raw_params, dome, material, config)
+            history.append(_history_entry(frame_aux, step + 1))
+            frames.append(_frame_entry(frame_aux, step + 1))
+            if frame_aux["loss"] < best_loss:
+                best_loss = frame_aux["loss"]
+                best_params = raw_params
 
     final = evaluate_layout(best_params, dome, material, config)
     result = {
@@ -165,6 +206,7 @@ def optimize_patch_layout(
         "optimized": final,
         "raw_params": np.asarray(best_params).tolist(),
         "history": history,
+        "frames": frames,
         "layout_serialized": _serialize_layout(final["layout"]),
     }
     return result

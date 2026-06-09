@@ -5,4 +5,5 @@ numpy
 scipy
 matplotlib
 plotly
+Pillow
 pytest
