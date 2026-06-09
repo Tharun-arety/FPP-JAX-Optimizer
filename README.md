@@ -38,16 +38,20 @@ These numbers come from the current default 90-step asset-generation run.
 
 | Metric | Helical-only baseline | Optimized hybrid demo |
 | --- | ---: | ---: |
-| Peak Tsai-Wu index | 2,826,724 | 11,641 |
-| Total mass (kg) | 0.1095 | 0.2345 |
-| Patch mass added (kg) | 0.0000 | 0.0519 |
-| Cost saving vs all-FPP laminate | - | 31.6% |
-| Transition height (mm) | - | 171.9 |
-| Max shear strain | 0.2099 | 0.5456 |
-| Max areal distortion | 0.2661 | 0.4889 |
-| Max thickness gradient (mm/m) | 9.77 | 13.17 |
+| Peak Tsai-Wu index | 1.415 | 0.934 |
+| Total mass (kg) | 0.1084 | 0.1519 |
+| Patch mass added (kg) | 0.0000 | 0.0035 |
+| Cost saving vs all-FPP laminate | - | 39.6% |
+| Transition height (mm) | 109.0 | 145.7 |
+| Max shear strain in active patches | 0.0000 | 0.0554 |
+| Max areal distortion in active patches | 0.0000 | 0.0764 |
+| Max thickness gradient (mm/m) | 4.91 | 5.27 |
 
-The current default run is useful as a visualization and optimization-trace demonstration. It sharply reduces the structural hotspot, but it is not yet a fully balanced final laminate: manufacturability penalties rise again late in the run, so the present repo should be treated as a research prototype rather than a finished design pipeline.
+`Tsai-Wu < 1` means the laminate is predicted to stay below ply failure under the analytical membrane solution. In the default demo, the helical-only baseline is slightly above that limit near the boss, and the optimized hybrid layout pushes the peak below 1.
+
+The current default README run is intentionally a low-pressure demo configuration (`pressure_mpa = 0.5`, `baseline_helical_plies = 4`, `transition_smooth_theta = 0.12`) so the failure-index values stay interpretable on a compact prototype laminate. For realistic 70 MPa studies, increase the baseline laminate thickness and retune the transition model accordingly.
+
+The run is now mechanically interpretable, but it is still not a release-ready design workflow: the active patches remain above the nominal shear and areal-distortion allowables, so the repository should still be read as a research prototype rather than a finished manufacturing pipeline.
 
 ## Visual Outputs
 

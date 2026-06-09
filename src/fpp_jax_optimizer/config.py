@@ -25,7 +25,7 @@ class DomeConfig:
 
 @dataclass(frozen=True)
 class MaterialConfig:
-    pressure_mpa: float = 70.0
+    pressure_mpa: float = 0.5
     ply_thickness_mm: float = 0.125
     liner_thickness_mm: float = 0.60
     baseline_helical_plies: float = 4.0
@@ -57,13 +57,13 @@ class OptimizationConfig:
     patch_width_bounds_m: tuple[float, float] = (0.04, 0.12)
     max_patch_plies: float = 6.0
     mask_sharpness: float = 35.0
-    transition_smooth_theta: float = 0.06
+    transition_smooth_theta: float = 0.12
     boss_margin_theta: float = 0.05
     theta_upper_margin: float = 0.10
-    stress_weight: float = 5.0
-    shear_weight: float = 40.0
+    stress_weight: float = 15.0
+    shear_weight: float = 30.0
     thickness_weight: float = 18.0
-    mass_weight: float = 0.08
+    mass_weight: float = 0.05
     history_stride: int = 5
 
 

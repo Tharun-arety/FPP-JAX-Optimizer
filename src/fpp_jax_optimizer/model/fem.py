@@ -103,8 +103,9 @@ def assemble_a_matrix_field(
     qbar_patches = qbar_matrix(Q, layout["angle_rad"])
     A_patches = jnp.einsum("ijk,iab->jkab", patch_t, qbar_patches)
 
-    regularization = Q[0, 0] * t * 0.05
-    A_floor = jnp.eye(3, dtype=Q.dtype) * regularization
+    qbar_floor = qbar_matrix(Q, alpha)
+    floor_diagonal = jnp.diag(qbar_floor) * t * 0.5
+    A_floor = jnp.diag(floor_diagonal)
     return A_helical + A_patches + A_floor
 
 
@@ -172,16 +173,12 @@ def tsai_wu_field(
     fi_helical_pos = helical_presence * ply_tsai_wu(alpha)
     fi_helical_neg = helical_presence * ply_tsai_wu(-alpha)
 
-    # Keep an ungated laminate-level envelope so unsupported regions still incur a penalty.
-    fi_reference = ply_tsai_wu(preferred_angle)
-
     fi_max = jnp.max(
         jnp.concatenate(
             [
                 fi_patches,
                 fi_helical_pos[None, ...],
                 fi_helical_neg[None, ...],
-                fi_reference[None, ...],
             ],
             axis=0,
         ),

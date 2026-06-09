@@ -18,6 +18,7 @@ def evaluate_kinematics(
     config = config or OptimizationConfig()
 
     masks, local = patch_masks_from_layout(dome, layout, config)
+    active_weight = 1.0 - jnp.exp(-(masks * layout["plies"][:, None, None]))
     angle = layout["angle_rad"][:, None, None]
     center_theta = layout["center_theta"][:, None, None]
     center_phi = layout["center_phi"][:, None, None]
@@ -47,24 +48,27 @@ def evaluate_kinematics(
     shear_excess = jax.nn.relu(shear_strain - material.allowable_shear_strain)
     distortion_excess = jax.nn.relu(areal_distortion - material.allowable_distortion)
     stretch_excess = jax.nn.relu(jnp.maximum(stretch_u, stretch_v) - material.allowable_distortion)
-    penalty_map_per_patch = masks * (shear_excess**2 + distortion_excess**2 + 0.5 * stretch_excess**2)
+    penalty_map_per_patch = active_weight * (shear_excess**2 + distortion_excess**2 + 0.5 * stretch_excess**2)
 
-    active_mask = jnp.sum(masks, axis=0)
-    normalization = jnp.maximum(jnp.sum(dome.area_weights * active_mask), 1.0e-8)
-    mean_penalty = jnp.sum(dome.area_weights * jnp.sum(penalty_map_per_patch, axis=0)) / normalization
+    active_mask = jnp.sum(active_weight, axis=0)
+    mean_penalty = jnp.sum(dome.area_weights * jnp.sum(penalty_map_per_patch, axis=0)) / jnp.maximum(
+        dome.total_area_m2,
+        1.0e-8,
+    )
     peak_violation = jnp.maximum(
-        jnp.max(masks * shear_excess),
-        jnp.maximum(jnp.max(masks * distortion_excess), jnp.max(masks * stretch_excess)),
+        jnp.max(active_weight * shear_excess),
+        jnp.maximum(jnp.max(active_weight * distortion_excess), jnp.max(active_weight * stretch_excess)),
     )
     penalty = mean_penalty + 25.0 * peak_violation**2
 
     weighted_denominator = jnp.maximum(active_mask, 1.0e-8)
-    combined_shear_map = jnp.sum(masks * shear_strain, axis=0) / weighted_denominator
-    combined_areal_map = jnp.sum(masks * areal_distortion, axis=0) / weighted_denominator
+    combined_shear_map = jnp.sum(active_weight * shear_strain, axis=0) / weighted_denominator
+    combined_areal_map = jnp.sum(active_weight * areal_distortion, axis=0) / weighted_denominator
     combined_wrinkle_map = jnp.maximum(combined_shear_map, combined_areal_map)
 
     return {
         "masks": masks,
+        "active_weight": active_weight,
         "u_local_m": local["u_local_m"],
         "v_local_m": local["v_local_m"],
         "shear_per_patch": shear_strain,
@@ -76,6 +80,6 @@ def evaluate_kinematics(
         "wrinkle_risk_map": combined_wrinkle_map,
         "penalty": penalty,
         "peak_violation": peak_violation,
-        "max_shear": jnp.max(masks * shear_strain),
-        "max_areal_distortion": jnp.max(masks * areal_distortion),
+        "max_shear": jnp.max(active_weight * shear_strain),
+        "max_areal_distortion": jnp.max(active_weight * areal_distortion),
     }

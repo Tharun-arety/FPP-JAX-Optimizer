@@ -400,7 +400,7 @@ def _draw_patch_movement_map(
 
     summary_lines = [
         "Outcome",
-        f"Peak Tsai-Wu  {summary['baseline_peak_stress_index']:.0f} -> {summary['optimized_peak_stress_index']:.0f}",
+        f"Peak Tsai-Wu  {summary['baseline_peak_stress_index']:.2f} -> {summary['optimized_peak_stress_index']:.2f}",
         f"Mass          {summary['baseline_mass_kg']:.3f} kg -> {summary['optimized_mass_kg']:.3f} kg",
         f"Transition    {1000.0 * summary['transition_height_m']:.1f} mm",
     ]
@@ -506,7 +506,7 @@ def _draw_patch_animation_map(
 
     info_lines = [
         f"Step {int(frames[current_index]['step'])}/{total_steps}",
-        f"Peak Tsai-Wu  {float(current_metrics['peak_stress_index']):.0f}",
+        f"Peak Tsai-Wu  {float(current_metrics['peak_stress_index']):.2f}",
         f"Mass          {float(current_metrics['total_mass_kg']):.3f} kg",
         f"Transition    {1000.0 * float(current_metrics['transition_height_m']):.1f} mm",
     ]
@@ -575,7 +575,7 @@ def _draw_convergence_frame(ax: plt.Axes, frames: list[dict[str, object]], curre
     info_lines = [
         f"Current step   {int(steps[current_index])}",
         f"Best loss      {best_loss:.3e}",
-        f"Best peak FI   {best_peak:.0f}",
+        f"Best peak FI   {best_peak:.2f}",
     ]
     ax.text(
         0.02,
@@ -709,7 +709,7 @@ def create_optimization_animation(result: dict[str, object], output_path: Path) 
             0.06,
             "\n".join(
                 [
-                    f"peak FI  {float(frame['metrics']['peak_stress_index']):.0f}",
+                    f"peak FI  {float(frame['metrics']['peak_stress_index']):.2f}",
                     f"mass     {float(frame['metrics']['total_mass_kg']):.3f} kg",
                     f"patches  {len(palette)}",
                 ]
